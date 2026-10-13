@@ -4,7 +4,7 @@ One job: serve [kantan](https://github.com/laithalenooz/kantan)'s install script
 so that this works.
 
 ```bash
-curl get.kantan.sh | sh
+curl -fsSL https://get.kantan.sh | sh
 ```
 
 ## Why a subdomain and not `kantan.sh` itself
@@ -18,13 +18,27 @@ one place people pipe bytes into a shell is the wrong trade.
 A subdomain has no ambiguity to resolve. Everything here is the script, for
 everyone, browser or terminal. It is what rustup does with `sh.rustup.rs`.
 
+## Give curl the scheme
+
+`curl get.kantan.sh | sh` **does not work**, and fails in the worst way: it
+prints nothing, exits 0, and installs nothing.
+
+curl assumes `http` when the scheme is left off. The host answers
+`308 Permanent Redirect` to `https` with a body of `Redirecting...`. And curl
+without `-L` prints that body rather than following it, exiting **0** — so `sh`
+receives the word `Redirecting...` and the pipeline looks like it ran. `-f` does
+not help, because a 308 is not an error.
+
+Hence `https://` in every example here. With the scheme explicit there is no
+redirect to follow, since the `Location` is the URL already being requested.
+
 ## The three files
 
 | File | Why |
 |---|---|
-| `install.sh` | the script, the explicit path: `curl get.kantan.sh/install.sh \| sh` |
-| `index.html` | **byte-identical to `install.sh`** — it is what makes the bare `curl get.kantan.sh` work, because a host answering `/` answers with its index |
-| `CNAME` | `get.kantan.sh`, which is what GitHub Pages reads |
+| `install.sh` | the script, the explicit path: `curl -fsSL https://get.kantan.sh/install.sh \| sh` |
+| `index.html` | **byte-identical to `install.sh`** — it is what lets the URL carry no path at all, because a host answering `/` answers with its index |
+| `CNAME` | `get.kantan.sh`. Vestigial: this is what GitHub Pages reads, and the domain currently resolves to Vercel (`server: Vercel`, and DNS points at `vercel-dns`). Kept so the repo can be served either way. |
 
 `index.html` being a shell script is the whole trick, and it is less strange
 than it looks: `curl` does not read the content type, and `sh` reads bytes. A
